@@ -14,7 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Prometheus URL from environment variable or default
-PROM_URL = os.environ.get("PROM_URL", "http://localhost:9090")
+PROM_URL = os.environ.get("PROM_URL", "http://prometheus:9090")
 logger.info(f"Connecting to Prometheus at: {PROM_URL}")
 
 # Initialize Dash app
@@ -52,6 +52,24 @@ def query_prometheus(metric_name):
         logger.error(f"Error querying Prometheus for {metric_name}: {e}")
         return None
 
+def get_active_alerts():
+    """Get currently firing alerts from Prometheus"""
+    try:
+        url = f"{PROM_URL}/api/v1/alerts"
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        result = response.json()
+        
+        if result['status'] == 'success':
+            alerts = result['data']['alerts']
+            # Filter only firing alerts
+            firing_alerts = [a for a in alerts if a['state'] == 'firing']
+            return firing_alerts
+        return []
+    except Exception as e:
+        logger.error(f"Error querying alerts: {e}")
+        return []
+
 # Define app layout
 app.layout = html.Div([
     html.Div([
@@ -60,6 +78,9 @@ app.layout = html.Div([
         
         # Status indicator
         html.Div(id='connection-status', style={'textAlign': 'center', 'marginBottom': 20}),
+        
+        # Active Alerts Section
+        html.Div(id='alerts-section', style={'marginBottom': 20}),
         
         # Key Metrics Cards
         html.Div([
@@ -149,6 +170,7 @@ app.index_string = '''
      Output('recall-value', 'children'),
      Output('f1-value', 'children'),
      Output('connection-status', 'children'),
+     Output('alerts-section', 'children'),
      Output('performance-graph', 'figure'),
      Output('predictions-graph', 'figure'),
      Output('resources-graph', 'figure')],
@@ -167,6 +189,9 @@ def update_dashboard(n):
     cpu = query_prometheus('cpu_usage_percent')
     memory = query_prometheus('memory_usage_mb')
     
+    # Get active alerts
+    active_alerts = get_active_alerts()
+    
     # Connection status
     if accuracy is not None:
         status = html.Div("🟢 Connected to Prometheus", 
@@ -174,6 +199,39 @@ def update_dashboard(n):
     else:
         status = html.Div("🔴 Disconnected from Prometheus", 
                          style={'color': 'red', 'fontWeight': 'bold'})
+    
+    # Alerts section
+    if active_alerts:
+        alert_cards = []
+        for alert in active_alerts:
+            severity = alert['labels'].get('severity', 'info')
+            color = '#e74c3c' if severity == 'critical' else '#f39c12'
+            alert_cards.append(
+                html.Div([
+                    html.Strong(f"🚨 {alert['labels'].get('alertname', 'Alert')}", 
+                               style={'fontSize': '16px'}),
+                    html.P(alert['annotations'].get('description', 'No description'),
+                          style={'margin': '5px 0', 'fontSize': '14px'})
+                ], style={
+                    'backgroundColor': color,
+                    'color': 'white',
+                    'padding': '15px',
+                    'borderRadius': '8px',
+                    'marginBottom': '10px',
+                    'boxShadow': '0 2px 4px rgba(0,0,0,0.2)'
+                })
+            )
+        alerts_display = html.Div([
+            html.H3("⚠️ Active Alerts", style={'color': '#e74c3c'}),
+            html.Div(alert_cards)
+        ])
+    else:
+        alerts_display = html.Div([
+            html.Div("✅ No Active Alerts - All Systems Normal", 
+                    style={'color': 'green', 'fontWeight': 'bold', 'fontSize': '16px',
+                           'padding': '15px', 'backgroundColor': '#d4edda',
+                           'borderRadius': '8px', 'textAlign': 'center'})
+        ])
     
     # Update history
     import time
@@ -269,10 +327,9 @@ def update_dashboard(n):
         plot_bgcolor='white'
     )
     
-    return (acc_display, prec_display, rec_display, f1_display, status,
+    return (acc_display, prec_display, rec_display, f1_display, status, alerts_display,
             performance_fig, predictions_fig, resources_fig)
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))
-    logger.info(f"Starting dashboard server on port {port}...")
-    app.run_server(host='0.0.0.0', port=port, debug=False)
+    logger.info("Starting dashboard server on port 8050...")
+    app.run_server(host='0.0.0.0', port=8050, debug=False)

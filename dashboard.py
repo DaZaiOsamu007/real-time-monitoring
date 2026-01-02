@@ -14,7 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Prometheus URL from environment variable or default
-PROM_URL = os.environ.get("PROM_URL", "http://prometheus:9090")
+PROM_URL = os.environ.get("PROM_URL", "http://localhost:9090")
 logger.info(f"Connecting to Prometheus at: {PROM_URL}")
 
 # Initialize Dash app

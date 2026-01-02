@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files: []
+
+# Scrape configurations
+scrape_configs:
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Scrape Model Metrics service
+  - job_name: 'model_metrics'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['model-metrics:8000']
+        labels:
+          instance: 'model-metrics.onrender.com:8000'
+          job: 'model_metrics'

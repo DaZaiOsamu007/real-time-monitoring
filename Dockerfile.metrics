@@ -1,0 +1,21 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install curl for healthcheck
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy metrics generator script
+COPY metrics_generator.py .
+
+# Expose metrics port
+EXPOSE 8000
+
+# Run the metrics generator
+CMD ["python", "metrics_generator.py"]

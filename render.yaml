@@ -1,0 +1,12 @@
+services:
+  # This is a single web service that runs all components together
+  - type: web
+    name: real-time-monitoring
+    env: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 8050

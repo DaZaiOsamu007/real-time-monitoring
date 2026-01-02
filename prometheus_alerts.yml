@@ -1,30 +1,21 @@
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-  scrape_timeout: 10s
-
-# Alertmanager configuration (optional)
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: []
-
-# Load rules once and periodically evaluate them
-rule_files:
-  - '/etc/prometheus/prometheus_alerts.yml'
-
-# Scrape configurations
-scrape_configs:
-  # Scrape Prometheus itself
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
-
-  # Scrape Model Metrics service
-  - job_name: 'model_metrics'
-    scrape_interval: 5s
-    static_configs:
-      - targets: ['model-metrics:8000']
+groups:
+  - name: model_performance_alerts
+    interval: 15s
+    rules:
+      - alert: LowModelAccuracy
+        expr: model_accuracy < 0.80
+        for: 1m
         labels:
-          instance: 'model-metrics.onrender.com:8000'
-          job: 'model_metrics'
+          severity: warning
+        annotations:
+          summary: "Model accuracy below 80%"
+          description: "Current accuracy: {{ $value }}"
+
+      - alert: HighErrorRate
+        expr: rate(total_errors[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate: {{ $value }}/sec"

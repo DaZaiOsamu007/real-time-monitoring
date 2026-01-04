@@ -6,22 +6,18 @@ import plotly.graph_objs as go
 from collections import deque
 import logging
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Prometheus URL from environment variable or default
 PROM_URL = os.environ.get("PROM_URL", "http://localhost:9090")
 logger.info(f"Connecting to Prometheus at: {PROM_URL}")
 
-# Initialize Dash app
 app = dash.Dash(__name__)
 app.title = "Real-Time Model Monitoring"
 
-# Store historical data (keep last 50 points)
 history_length = 50
 metrics_history = {
     'accuracy': deque(maxlen=history_length),
@@ -37,7 +33,7 @@ metrics_history = {
 }
 
 def query_prometheus(metric_name):
-    """Query Prometheus for a specific metric"""
+    
     try:
         url = f"{PROM_URL}/api/v1/query"
         response = requests.get(url, params={'query': metric_name}, timeout=5)
@@ -53,7 +49,7 @@ def query_prometheus(metric_name):
         return None
 
 def get_active_alerts():
-    """Get currently firing alerts from Prometheus"""
+    
     try:
         url = f"{PROM_URL}/api/v1/alerts"
         response = requests.get(url, timeout=5)
@@ -62,7 +58,7 @@ def get_active_alerts():
         
         if result['status'] == 'success':
             alerts = result['data']['alerts']
-            # Filter only firing alerts
+            
             firing_alerts = [a for a in alerts if a['state'] == 'firing']
             return firing_alerts
         return []
@@ -70,19 +66,15 @@ def get_active_alerts():
         logger.error(f"Error querying alerts: {e}")
         return []
 
-# Define app layout
 app.layout = html.Div([
     html.Div([
-        html.H1("🤖 Real-Time Model Monitoring Dashboard", 
+        html.H1("Real-Time Model Monitoring Dashboard", 
                 style={'textAlign': 'center', 'color': '#2c3e50', 'marginBottom': 30}),
         
-        # Status indicator
         html.Div(id='connection-status', style={'textAlign': 'center', 'marginBottom': 20}),
         
-        # Active Alerts Section
         html.Div(id='alerts-section', style={'marginBottom': 20}),
         
-        # Key Metrics Cards
         html.Div([
             html.Div([
                 html.H3("Accuracy", style={'color': '#3498db'}),
@@ -105,13 +97,11 @@ app.layout = html.Div([
             ], className='metric-card'),
         ], style={'display': 'flex', 'justifyContent': 'space-around', 'marginBottom': 30}),
         
-        # Performance Metrics Graph
         html.Div([
             html.H3("Model Performance Over Time", style={'textAlign': 'center'}),
             dcc.Graph(id='performance-graph')
         ], style={'marginBottom': 30}),
         
-        # Predictions and System Metrics
         html.Div([
             html.Div([
                 html.H3("Prediction Statistics", style={'textAlign': 'center'}),
@@ -124,16 +114,14 @@ app.layout = html.Div([
             ], style={'width': '48%', 'display': 'inline-block', 'marginLeft': '4%'})
         ]),
         
-        # Auto-refresh interval
         dcc.Interval(
             id='interval-component',
-            interval=2000,  # Update every 2 seconds
+            interval=2000,  
             n_intervals=0
         )
     ], style={'padding': 20})
 ], style={'fontFamily': 'Arial, sans-serif', 'backgroundColor': '#ecf0f1'})
 
-# Add CSS
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -179,7 +167,6 @@ app.index_string = '''
 def update_dashboard(n):
     """Update all dashboard components"""
     
-    # Query current metrics
     accuracy = query_prometheus('model_accuracy')
     precision = query_prometheus('model_precision')
     recall = query_prometheus('model_recall')
@@ -189,10 +176,8 @@ def update_dashboard(n):
     cpu = query_prometheus('cpu_usage_percent')
     memory = query_prometheus('memory_usage_mb')
     
-    # Get active alerts
     active_alerts = get_active_alerts()
     
-    # Connection status
     if accuracy is not None:
         status = html.Div("🟢 Connected to Prometheus", 
                          style={'color': 'green', 'fontWeight': 'bold'})
@@ -200,7 +185,6 @@ def update_dashboard(n):
         status = html.Div("🔴 Disconnected from Prometheus", 
                          style={'color': 'red', 'fontWeight': 'bold'})
     
-    # Alerts section
     if active_alerts:
         alert_cards = []
         for alert in active_alerts:
@@ -233,7 +217,6 @@ def update_dashboard(n):
                            'borderRadius': '8px', 'textAlign': 'center'})
         ])
     
-    # Update history
     import time
     current_time = time.time()
     metrics_history['timestamps'].append(current_time)
@@ -246,13 +229,11 @@ def update_dashboard(n):
     metrics_history['cpu'].append(cpu if cpu else 0)
     metrics_history['memory'].append(memory if memory else 0)
     
-    # Format display values
     acc_display = f"{accuracy:.4f}" if accuracy else "N/A"
     prec_display = f"{precision:.4f}" if precision else "N/A"
     rec_display = f"{recall:.4f}" if recall else "N/A"
     f1_display = f"{f1:.4f}" if f1 else "N/A"
     
-    # Performance graph
     performance_fig = go.Figure()
     performance_fig.add_trace(go.Scatter(
         y=list(metrics_history['accuracy']),
@@ -285,7 +266,6 @@ def update_dashboard(n):
         plot_bgcolor='white'
     )
     
-    # Predictions graph
     predictions_fig = go.Figure()
     predictions_fig.add_trace(go.Scatter(
         y=list(metrics_history['predictions']),
@@ -305,7 +285,6 @@ def update_dashboard(n):
         plot_bgcolor='white'
     )
     
-    # Resources graph
     resources_fig = go.Figure()
     resources_fig.add_trace(go.Scatter(
         y=list(metrics_history['cpu']),

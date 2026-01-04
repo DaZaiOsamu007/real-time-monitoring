@@ -205,7 +205,7 @@ Feel free to open issues or submit pull requests for improvements!
 
 MIT License - feel free to use this project for your needs.
 
-## 🎯 Next Steps
+## Next Steps
 
 - Add alerting rules in Prometheus
 - Integrate with Grafana for advanced visualization
@@ -213,6 +213,3 @@ MIT License - feel free to use this project for your needs.
 - Implement metric persistence across restarts
 - Add more ML-specific metrics (drift detection, data quality, etc.)
 
----
-
-Made with ❤️ for real-time ML monitoring

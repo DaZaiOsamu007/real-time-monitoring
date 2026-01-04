@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # Model Metrics Generator Service
   model-metrics:
     build:
       context: .
@@ -18,7 +17,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # Prometheus Service
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -39,7 +37,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Dashboard Service (Main UI)
   dashboard:
     build:
       context: .

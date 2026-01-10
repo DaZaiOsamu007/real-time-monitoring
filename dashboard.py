@@ -6,22 +6,18 @@ import plotly.graph_objs as go
 from collections import deque
 import logging
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Prometheus URL
 PROM_URL = os.environ.get("PROM_URL", "http://localhost:9090")
 logger.info(f"Connecting to Prometheus at: {PROM_URL}")
 
-# Initialize Dash app
 app = dash.Dash(__name__)
 app.title = "ML Model Monitoring"
 
-# Store historical data
 history_length = 50
 metrics_history = {
     'accuracy': deque(maxlen=history_length),
@@ -68,7 +64,6 @@ def get_active_alerts():
         logger.error(f"Error querying alerts: {e}")
         return []
 
-# Color scheme
 COLORS = {
     'primary': '#3B82F6',
     'success': '#10B981', 
@@ -81,9 +76,7 @@ COLORS = {
     'card_bg': '#FFFFFF'
 }
 
-# Define app layout
 app.layout = html.Div([
-    # Large Header with gradient background
     html.Div([
         html.Div([
             html.Div([
@@ -142,14 +135,10 @@ app.layout = html.Div([
         'boxShadow': '0 4px 20px rgba(0,0,0,0.1)'
     }),
     
-    # Main content - Full width
     html.Div([
-        # Alerts Section
         html.Div(id='alerts-section', style={'marginBottom': '30px'}),
         
-        # Metric Cards - Full Width Grid
         html.Div([
-            # Accuracy
             html.Div([
                 html.Div('📊', style={'fontSize': '48px', 'marginBottom': '16px'}),
                 html.Div('ACCURACY', style={
@@ -181,7 +170,6 @@ app.layout = html.Div([
                 'cursor': 'pointer'
             }, className='metric-card'),
             
-            # Precision
             html.Div([
                 html.Div('🎯', style={'fontSize': '48px', 'marginBottom': '16px'}),
                 html.Div('PRECISION', style={
@@ -213,7 +201,6 @@ app.layout = html.Div([
                 'cursor': 'pointer'
             }, className='metric-card'),
             
-            # Recall
             html.Div([
                 html.Div('🔍', style={'fontSize': '48px', 'marginBottom': '16px'}),
                 html.Div('RECALL', style={
@@ -245,7 +232,6 @@ app.layout = html.Div([
                 'cursor': 'pointer'
             }, className='metric-card'),
             
-            # F1 Score
             html.Div([
                 html.Div('⚡', style={'fontSize': '48px', 'marginBottom': '16px'}),
                 html.Div('F1 SCORE', style={
@@ -283,7 +269,6 @@ app.layout = html.Div([
             'marginBottom': '40px'
         }),
         
-        # Performance Graph - Full Width
         html.Div([
             html.Div([
                 html.Div([
@@ -313,9 +298,7 @@ app.layout = html.Div([
             })
         ], style={'marginBottom': '30px'}),
         
-        # Bottom Row - Predictions and Resources
         html.Div([
-            # Predictions
             html.Div([
                 html.Div([
                     html.Div([
@@ -346,7 +329,6 @@ app.layout = html.Div([
                 })
             ], style={'flex': '1'}),
             
-            # Resources
             html.Div([
                 html.Div([
                     html.Div([
@@ -382,7 +364,6 @@ app.layout = html.Div([
             'marginBottom': '50px'
         }),
         
-        # Auto-refresh
         dcc.Interval(id='interval-component', interval=2000, n_intervals=0)
         
     ], style={
@@ -394,7 +375,6 @@ app.layout = html.Div([
     'minHeight': '100vh'
 })
 
-# Custom CSS
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -446,7 +426,6 @@ app.index_string = '''
     [Input('interval-component', 'n_intervals')]
 )
 def update_dashboard(n):
-    # Query metrics
     accuracy = query_prometheus('model_accuracy')
     precision = query_prometheus('model_precision')
     recall = query_prometheus('model_recall')
@@ -456,10 +435,8 @@ def update_dashboard(n):
     cpu = query_prometheus('cpu_usage_percent')
     memory = query_prometheus('memory_usage_mb')
     
-    # Get alerts
     active_alerts = get_active_alerts()
     
-    # Connection status
     if accuracy is not None:
         dot_style = {
             'width': '12px',
@@ -484,11 +461,9 @@ def update_dashboard(n):
         }
         conn_text = 'Disconnected'
     
-    # Last update time
     from datetime import datetime
     update_time = f"Updated {datetime.now().strftime('%I:%M:%S %p')}"
     
-    # Alerts display
     if active_alerts:
         alert_items = []
         for alert in active_alerts:
@@ -534,7 +509,6 @@ def update_dashboard(n):
     else:
         alerts_display = html.Div()
     
-    # Update history
     import time
     metrics_history['timestamps'].append(time.time())
     metrics_history['accuracy'].append(accuracy if accuracy else 0)
@@ -546,7 +520,6 @@ def update_dashboard(n):
     metrics_history['cpu'].append(cpu if cpu else 0)
     metrics_history['memory'].append(memory if memory else 0)
     
-    # Calculate changes
     def get_change(history_key):
         if len(metrics_history[history_key]) >= 2:
             prev = metrics_history[history_key][-2]
@@ -560,13 +533,11 @@ def update_dashboard(n):
                 return html.Span(f"{arrow} {abs(change):.1f}%", style={'color': color})
         return html.Span('—', style={'color': COLORS['light_gray']})
     
-    # Format values
     acc_display = f"{accuracy:.4f}" if accuracy else "—"
     prec_display = f"{precision:.4f}" if precision else "—"
     rec_display = f"{recall:.4f}" if recall else "—"
     f1_display = f"{f1:.4f}" if f1 else "—"
     
-    # Performance graph
     performance_fig = go.Figure()
     
     metrics_config = [
@@ -604,7 +575,6 @@ def update_dashboard(n):
         height=450
     )
     
-    # Predictions graph
     predictions_fig = go.Figure()
     predictions_fig.add_trace(go.Scatter(
         y=list(metrics_history['predictions']),
@@ -633,7 +603,6 @@ def update_dashboard(n):
         height=320
     )
     
-    # Resources graph
     resources_fig = go.Figure()
     resources_fig.add_trace(go.Scatter(
         y=list(metrics_history['cpu']),

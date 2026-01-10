@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 PROM_URL = os.environ.get("PROM_URL", "http://localhost:9090")
 logger.info(f"Connecting to Prometheus at: {PROM_URL}")
 
-# Initialize Dash app with external stylesheet
+# Initialize Dash app
 app = dash.Dash(__name__)
 app.title = "ML Model Monitoring"
 
@@ -28,7 +28,6 @@ metrics_history = {
     'precision': deque(maxlen=history_length),
     'recall': deque(maxlen=history_length),
     'f1_score': deque(maxlen=history_length),
-    'latency': deque(maxlen=history_length),
     'predictions': deque(maxlen=history_length),
     'errors': deque(maxlen=history_length),
     'cpu': deque(maxlen=history_length),
@@ -69,221 +68,294 @@ def get_active_alerts():
         logger.error(f"Error querying alerts: {e}")
         return []
 
-# Enhanced color scheme
+# Color scheme
 COLORS = {
-    'primary': '#2E86DE',
-    'success': '#10B981',
+    'primary': '#3B82F6',
+    'success': '#10B981', 
     'warning': '#F59E0B',
     'danger': '#EF4444',
     'purple': '#8B5CF6',
-    'dark': '#1F2937',
-    'light': '#F9FAFB',
-    'gradient_start': '#667eea',
-    'gradient_end': '#764ba2'
+    'dark': '#111827',
+    'gray': '#6B7280',
+    'light_bg': '#F9FAFB',
+    'card_bg': '#FFFFFF'
 }
 
-# Define app layout with modern styling
+# Define app layout
 app.layout = html.Div([
-    # Header with gradient background
+    # Minimalist Header
     html.Div([
         html.Div([
+            html.H1([
+                html.Span('🤖 ', style={'marginRight': '12px'}),
+                'Model Monitor'
+            ], style={
+                'margin': 0,
+                'color': COLORS['dark'],
+                'fontSize': '32px',
+                'fontWeight': '700',
+                'letterSpacing': '-0.5px'
+            }),
             html.Div([
-                html.Span('🤖', style={'fontSize': '36px', 'marginRight': '15px'}),
-                html.H1("Real-Time Model Monitoring", 
-                       style={
-                           'display': 'inline-block',
-                           'margin': 0,
-                           'color': 'white',
-                           'fontWeight': '700',
-                           'fontSize': '28px'
-                       }),
-            ], style={'display': 'flex', 'alignItems': 'center'}),
-            html.Div(id='last-update', style={
-                'color': 'rgba(255,255,255,0.9)',
-                'fontSize': '14px',
-                'marginTop': '5px'
-            })
-        ], style={'maxWidth': '1400px', 'margin': '0 auto', 'padding': '0 20px'})
+                html.Span(id='connection-status-dot', style={
+                    'width': '8px',
+                    'height': '8px',
+                    'borderRadius': '50%',
+                    'backgroundColor': COLORS['success'],
+                    'marginRight': '8px',
+                    'display': 'inline-block'
+                }),
+                html.Span(id='connection-text', style={
+                    'color': COLORS['gray'],
+                    'fontSize': '14px',
+                    'fontWeight': '500'
+                })
+            ], style={'display': 'flex', 'alignItems': 'center', 'marginTop': '8px'})
+        ], style={
+            'maxWidth': '1600px',
+            'margin': '0 auto',
+            'padding': '0 40px'
+        })
     ], style={
-        'background': f'linear-gradient(135deg, {COLORS["gradient_start"]} 0%, {COLORS["gradient_end"]} 100%)',
-        'padding': '30px 0',
-        'boxShadow': '0 4px 6px rgba(0,0,0,0.1)',
-        'marginBottom': '30px'
+        'backgroundColor': COLORS['card_bg'],
+        'borderBottom': '1px solid #E5E7EB',
+        'padding': '32px 0',
+        'marginBottom': '40px'
     }),
     
     html.Div([
-        # Status and Alerts Row
-        html.Div([
-            html.Div(id='connection-status', style={'flex': 1}),
-            html.Div(id='alerts-section', style={'flex': 2, 'marginLeft': '20px'}),
-        ], style={
-            'display': 'flex',
-            'marginBottom': '30px',
-            'gap': '20px'
-        }),
+        # Alerts Section (if any)
+        html.Div(id='alerts-section', style={'marginBottom': '32px'}),
         
-        # Key Metrics Cards with enhanced styling
+        # Metric Cards - More Spacious
         html.Div([
-            # Accuracy Card
+            # Accuracy
             html.Div([
-                html.Div([
-                    html.Div('📊', style={'fontSize': '32px', 'marginBottom': '10px'}),
-                    html.H4("Accuracy", style={'color': '#6B7280', 'margin': '0 0 10px 0', 'fontSize': '14px', 'fontWeight': '600', 'textTransform': 'uppercase'}),
-                    html.H2(id='accuracy-value', style={'color': COLORS['primary'], 'margin': 0, 'fontSize': '36px', 'fontWeight': '700'}),
-                    html.Div(id='accuracy-change', style={'fontSize': '12px', 'marginTop': '8px', 'color': '#6B7280'})
-                ])
+                html.Div('📊', style={'fontSize': '40px', 'marginBottom': '16px', 'opacity': '0.9'}),
+                html.Div('Accuracy', style={
+                    'fontSize': '13px',
+                    'fontWeight': '600',
+                    'color': COLORS['gray'],
+                    'textTransform': 'uppercase',
+                    'letterSpacing': '0.5px',
+                    'marginBottom': '12px'
+                }),
+                html.Div(id='accuracy-value', style={
+                    'fontSize': '48px',
+                    'fontWeight': '700',
+                    'color': COLORS['primary'],
+                    'lineHeight': '1',
+                    'marginBottom': '8px'
+                }),
+                html.Div(id='accuracy-change', style={
+                    'fontSize': '14px',
+                    'fontWeight': '500'
+                })
             ], style={
-                'backgroundColor': 'white',
-                'padding': '25px',
-                'borderRadius': '16px',
-                'boxShadow': '0 4px 6px rgba(0,0,0,0.07)',
+                'backgroundColor': COLORS['card_bg'],
+                'padding': '40px 32px',
+                'borderRadius': '12px',
                 'textAlign': 'center',
-                'border': f'2px solid {COLORS["primary"]}',
-                'transition': 'transform 0.2s, box-shadow 0.2s',
-                'cursor': 'pointer'
+                'boxShadow': '0 1px 3px rgba(0,0,0,0.1)',
+                'border': '1px solid #E5E7EB',
+                'transition': 'all 0.3s ease'
             }, className='metric-card'),
             
-            # Precision Card
+            # Precision
             html.Div([
-                html.Div([
-                    html.Div('🎯', style={'fontSize': '32px', 'marginBottom': '10px'}),
-                    html.H4("Precision", style={'color': '#6B7280', 'margin': '0 0 10px 0', 'fontSize': '14px', 'fontWeight': '600', 'textTransform': 'uppercase'}),
-                    html.H2(id='precision-value', style={'color': COLORS['purple'], 'margin': 0, 'fontSize': '36px', 'fontWeight': '700'}),
-                    html.Div(id='precision-change', style={'fontSize': '12px', 'marginTop': '8px', 'color': '#6B7280'})
-                ])
+                html.Div('🎯', style={'fontSize': '40px', 'marginBottom': '16px', 'opacity': '0.9'}),
+                html.Div('Precision', style={
+                    'fontSize': '13px',
+                    'fontWeight': '600',
+                    'color': COLORS['gray'],
+                    'textTransform': 'uppercase',
+                    'letterSpacing': '0.5px',
+                    'marginBottom': '12px'
+                }),
+                html.Div(id='precision-value', style={
+                    'fontSize': '48px',
+                    'fontWeight': '700',
+                    'color': COLORS['purple'],
+                    'lineHeight': '1',
+                    'marginBottom': '8px'
+                }),
+                html.Div(id='precision-change', style={
+                    'fontSize': '14px',
+                    'fontWeight': '500'
+                })
             ], style={
-                'backgroundColor': 'white',
-                'padding': '25px',
-                'borderRadius': '16px',
-                'boxShadow': '0 4px 6px rgba(0,0,0,0.07)',
+                'backgroundColor': COLORS['card_bg'],
+                'padding': '40px 32px',
+                'borderRadius': '12px',
                 'textAlign': 'center',
-                'border': f'2px solid {COLORS["purple"]}',
-                'transition': 'transform 0.2s, box-shadow 0.2s',
-                'cursor': 'pointer'
+                'boxShadow': '0 1px 3px rgba(0,0,0,0.1)',
+                'border': '1px solid #E5E7EB',
+                'transition': 'all 0.3s ease'
             }, className='metric-card'),
             
-            # Recall Card
+            # Recall
             html.Div([
-                html.Div([
-                    html.Div('🔍', style={'fontSize': '32px', 'marginBottom': '10px'}),
-                    html.H4("Recall", style={'color': '#6B7280', 'margin': '0 0 10px 0', 'fontSize': '14px', 'fontWeight': '600', 'textTransform': 'uppercase'}),
-                    html.H2(id='recall-value', style={'color': COLORS['danger'], 'margin': 0, 'fontSize': '36px', 'fontWeight': '700'}),
-                    html.Div(id='recall-change', style={'fontSize': '12px', 'marginTop': '8px', 'color': '#6B7280'})
-                ])
+                html.Div('🔍', style={'fontSize': '40px', 'marginBottom': '16px', 'opacity': '0.9'}),
+                html.Div('Recall', style={
+                    'fontSize': '13px',
+                    'fontWeight': '600',
+                    'color': COLORS['gray'],
+                    'textTransform': 'uppercase',
+                    'letterSpacing': '0.5px',
+                    'marginBottom': '12px'
+                }),
+                html.Div(id='recall-value', style={
+                    'fontSize': '48px',
+                    'fontWeight': '700',
+                    'color': COLORS['danger'],
+                    'lineHeight': '1',
+                    'marginBottom': '8px'
+                }),
+                html.Div(id='recall-change', style={
+                    'fontSize': '14px',
+                    'fontWeight': '500'
+                })
             ], style={
-                'backgroundColor': 'white',
-                'padding': '25px',
-                'borderRadius': '16px',
-                'boxShadow': '0 4px 6px rgba(0,0,0,0.07)',
+                'backgroundColor': COLORS['card_bg'],
+                'padding': '40px 32px',
+                'borderRadius': '12px',
                 'textAlign': 'center',
-                'border': f'2px solid {COLORS["danger"]}',
-                'transition': 'transform 0.2s, box-shadow 0.2s',
-                'cursor': 'pointer'
+                'boxShadow': '0 1px 3px rgba(0,0,0,0.1)',
+                'border': '1px solid #E5E7EB',
+                'transition': 'all 0.3s ease'
             }, className='metric-card'),
             
-            # F1 Score Card
+            # F1 Score
             html.Div([
-                html.Div([
-                    html.Div('⚡', style={'fontSize': '32px', 'marginBottom': '10px'}),
-                    html.H4("F1 Score", style={'color': '#6B7280', 'margin': '0 0 10px 0', 'fontSize': '14px', 'fontWeight': '600', 'textTransform': 'uppercase'}),
-                    html.H2(id='f1-value', style={'color': COLORS['warning'], 'margin': 0, 'fontSize': '36px', 'fontWeight': '700'}),
-                    html.Div(id='f1-change', style={'fontSize': '12px', 'marginTop': '8px', 'color': '#6B7280'})
-                ])
+                html.Div('⚡', style={'fontSize': '40px', 'marginBottom': '16px', 'opacity': '0.9'}),
+                html.Div('F1 Score', style={
+                    'fontSize': '13px',
+                    'fontWeight': '600',
+                    'color': COLORS['gray'],
+                    'textTransform': 'uppercase',
+                    'letterSpacing': '0.5px',
+                    'marginBottom': '12px'
+                }),
+                html.Div(id='f1-value', style={
+                    'fontSize': '48px',
+                    'fontWeight': '700',
+                    'color': COLORS['warning'],
+                    'lineHeight': '1',
+                    'marginBottom': '8px'
+                }),
+                html.Div(id='f1-change', style={
+                    'fontSize': '14px',
+                    'fontWeight': '500'
+                })
             ], style={
-                'backgroundColor': 'white',
-                'padding': '25px',
-                'borderRadius': '16px',
-                'boxShadow': '0 4px 6px rgba(0,0,0,0.07)',
+                'backgroundColor': COLORS['card_bg'],
+                'padding': '40px 32px',
+                'borderRadius': '12px',
                 'textAlign': 'center',
-                'border': f'2px solid {COLORS["warning"]}',
-                'transition': 'transform 0.2s, box-shadow 0.2s',
-                'cursor': 'pointer'
+                'boxShadow': '0 1px 3px rgba(0,0,0,0.1)',
+                'border': '1px solid #E5E7EB',
+                'transition': 'all 0.3s ease'
             }, className='metric-card'),
         ], style={
             'display': 'grid',
-            'gridTemplateColumns': 'repeat(auto-fit, minmax(250px, 1fr))',
-            'gap': '20px',
-            'marginBottom': '30px'
+            'gridTemplateColumns': 'repeat(auto-fit, minmax(280px, 1fr))',
+            'gap': '24px',
+            'marginBottom': '48px'
         }),
         
-        # Performance Graph with card wrapper
+        # Performance Graph - Full Width
         html.Div([
             html.Div([
-                html.H3("📈 Model Performance Trends", style={
-                    'margin': '0 0 20px 0',
-                    'color': COLORS['dark'],
+                html.H2('Performance Trends', style={
                     'fontSize': '20px',
-                    'fontWeight': '600'
+                    'fontWeight': '600',
+                    'color': COLORS['dark'],
+                    'margin': '0 0 24px 0'
                 }),
-                dcc.Graph(id='performance-graph', config={'displayModeBar': False})
+                dcc.Graph(
+                    id='performance-graph',
+                    config={'displayModeBar': False},
+                    style={'height': '400px'}
+                )
             ], style={
-                'backgroundColor': 'white',
-                'padding': '25px',
-                'borderRadius': '16px',
-                'boxShadow': '0 4px 6px rgba(0,0,0,0.07)'
+                'backgroundColor': COLORS['card_bg'],
+                'padding': '32px',
+                'borderRadius': '12px',
+                'boxShadow': '0 1px 3px rgba(0,0,0,0.1)',
+                'border': '1px solid #E5E7EB'
             })
-        ], style={'marginBottom': '30px'}),
+        ], style={'marginBottom': '32px'}),
         
-        # Predictions and System Metrics
+        # Bottom Row - Side by Side
         html.Div([
-            # Predictions Graph
+            # Predictions
             html.Div([
                 html.Div([
-                    html.H3("📊 Prediction Analytics", style={
-                        'margin': '0 0 20px 0',
+                    html.H2('Predictions', style={
+                        'fontSize': '18px',
+                        'fontWeight': '600',
                         'color': COLORS['dark'],
-                        'fontSize': '20px',
-                        'fontWeight': '600'
+                        'margin': '0 0 24px 0'
                     }),
-                    dcc.Graph(id='predictions-graph', config={'displayModeBar': False})
+                    dcc.Graph(
+                        id='predictions-graph',
+                        config={'displayModeBar': False},
+                        style={'height': '300px'}
+                    )
                 ], style={
-                    'backgroundColor': 'white',
-                    'padding': '25px',
-                    'borderRadius': '16px',
-                    'boxShadow': '0 4px 6px rgba(0,0,0,0.07)',
+                    'backgroundColor': COLORS['card_bg'],
+                    'padding': '28px',
+                    'borderRadius': '12px',
+                    'boxShadow': '0 1px 3px rgba(0,0,0,0.1)',
+                    'border': '1px solid #E5E7EB',
                     'height': '100%'
                 })
-            ], style={'flex': 1}),
+            ], style={'flex': '1'}),
             
-            # System Resources Graph
+            # Resources
             html.Div([
                 html.Div([
-                    html.H3("💻 System Resources", style={
-                        'margin': '0 0 20px 0',
+                    html.H2('Resources', style={
+                        'fontSize': '18px',
+                        'fontWeight': '600',
                         'color': COLORS['dark'],
-                        'fontSize': '20px',
-                        'fontWeight': '600'
+                        'margin': '0 0 24px 0'
                     }),
-                    dcc.Graph(id='resources-graph', config={'displayModeBar': False})
+                    dcc.Graph(
+                        id='resources-graph',
+                        config={'displayModeBar': False},
+                        style={'height': '300px'}
+                    )
                 ], style={
-                    'backgroundColor': 'white',
-                    'padding': '25px',
-                    'borderRadius': '16px',
-                    'boxShadow': '0 4px 6px rgba(0,0,0,0.07)',
+                    'backgroundColor': COLORS['card_bg'],
+                    'padding': '28px',
+                    'borderRadius': '12px',
+                    'boxShadow': '0 1px 3px rgba(0,0,0,0.1)',
+                    'border': '1px solid #E5E7EB',
                     'height': '100%'
                 })
-            ], style={'flex': 1, 'marginLeft': '20px'})
-        ], style={'display': 'flex', 'gap': '20px'}),
+            ], style={'flex': '1'})
+        ], style={
+            'display': 'flex',
+            'gap': '24px',
+            'marginBottom': '40px'
+        }),
         
-        # Auto-refresh interval
-        dcc.Interval(
-            id='interval-component',
-            interval=2000,
-            n_intervals=0
-        )
+        # Auto-refresh
+        dcc.Interval(id='interval-component', interval=2000, n_intervals=0)
+        
     ], style={
-        'maxWidth': '1400px',
+        'maxWidth': '1600px',
         'margin': '0 auto',
-        'padding': '0 20px 40px 20px',
-        'backgroundColor': COLORS['light'],
-        'minHeight': '100vh'
+        'padding': '0 40px 60px 40px'
     })
 ], style={
-    'fontFamily': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-    'backgroundColor': COLORS['light']
+    'fontFamily': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    'backgroundColor': COLORS['light_bg'],
+    'minHeight': '100vh'
 })
 
-# Add custom CSS
+# Custom CSS
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -293,20 +365,11 @@ app.index_string = '''
         {%favicon%}
         {%css%}
         <style>
-            body {
-                margin: 0;
-                padding: 0;
-            }
+            * { box-sizing: border-box; }
+            body { margin: 0; padding: 0; }
             .metric-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important;
-            }
-            @keyframes fadeIn {
-                from { opacity: 0; transform: translateY(20px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-            .metric-card {
-                animation: fadeIn 0.5s ease-out;
+                transform: translateY(-4px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
             }
         </style>
     </head>
@@ -330,9 +393,9 @@ app.index_string = '''
      Output('precision-change', 'children'),
      Output('recall-change', 'children'),
      Output('f1-change', 'children'),
-     Output('connection-status', 'children'),
+     Output('connection-status-dot', 'style'),
+     Output('connection-text', 'children'),
      Output('alerts-section', 'children'),
-     Output('last-update', 'children'),
      Output('performance-graph', 'figure'),
      Output('predictions-graph', 'figure'),
      Output('resources-graph', 'figure')],
@@ -352,99 +415,74 @@ def update_dashboard(n):
     # Get alerts
     active_alerts = get_active_alerts()
     
-    # Connection status with modern design
+    # Connection status
     if accuracy is not None:
-        status = html.Div([
-            html.Div([
-                html.Span('●', style={'color': COLORS['success'], 'fontSize': '20px', 'marginRight': '10px', 'animation': 'pulse 2s infinite'}),
-                html.Div([
-                    html.Strong("Connected", style={'display': 'block', 'fontSize': '16px'}),
-                    html.Span("Real-time data streaming", style={'fontSize': '12px', 'color': '#6B7280'})
-                ])
-            ], style={'display': 'flex', 'alignItems': 'center'})
-        ], style={
-            'backgroundColor': 'white',
-            'padding': '20px',
-            'borderRadius': '12px',
-            'boxShadow': '0 4px 6px rgba(0,0,0,0.07)',
-            'border': f'2px solid {COLORS["success"]}'
-        })
+        dot_style = {
+            'width': '8px',
+            'height': '8px',
+            'borderRadius': '50%',
+            'backgroundColor': COLORS['success'],
+            'marginRight': '8px',
+            'display': 'inline-block'
+        }
+        conn_text = 'Connected • Live data'
     else:
-        status = html.Div([
-            html.Div([
-                html.Span('●', style={'color': COLORS['danger'], 'fontSize': '20px', 'marginRight': '10px'}),
-                html.Div([
-                    html.Strong("Disconnected", style={'display': 'block', 'fontSize': '16px'}),
-                    html.Span("Waiting for Prometheus...", style={'fontSize': '12px', 'color': '#6B7280'})
-                ])
-            ], style={'display': 'flex', 'alignItems': 'center'})
-        ], style={
-            'backgroundColor': 'white',
-            'padding': '20px',
-            'borderRadius': '12px',
-            'boxShadow': '0 4px 6px rgba(0,0,0,0.07)',
-            'border': f'2px solid {COLORS["danger"]}'
-        })
+        dot_style = {
+            'width': '8px',
+            'height': '8px',
+            'borderRadius': '50%',
+            'backgroundColor': COLORS['danger'],
+            'marginRight': '8px',
+            'display': 'inline-block'
+        }
+        conn_text = 'Disconnected'
     
-    # Alerts display with modern design
+    # Alerts display
     if active_alerts:
-        alert_cards = []
+        alert_items = []
         for alert in active_alerts:
             severity = alert['labels'].get('severity', 'info')
             color = COLORS['danger'] if severity == 'critical' else COLORS['warning']
-            icon = '🚨' if severity == 'critical' else '⚠️'
             
-            alert_cards.append(
+            alert_items.append(
                 html.Div([
                     html.Div([
-                        html.Span(icon, style={'fontSize': '24px', 'marginRight': '15px'}),
-                        html.Div([
-                            html.Strong(alert['labels'].get('alertname', 'Alert'), 
-                                       style={'fontSize': '16px', 'display': 'block', 'marginBottom': '5px'}),
-                            html.P(alert['annotations'].get('description', 'No description'),
-                                  style={'margin': 0, 'fontSize': '14px', 'opacity': '0.9'})
-                        ], style={'flex': 1})
-                    ], style={'display': 'flex', 'alignItems': 'flex-start'})
+                        html.Strong(alert['labels'].get('alertname', 'Alert'), style={
+                            'fontSize': '16px',
+                            'color': color,
+                            'display': 'block',
+                            'marginBottom': '4px'
+                        }),
+                        html.Span(alert['annotations'].get('description', ''), style={
+                            'fontSize': '14px',
+                            'color': COLORS['gray']
+                        })
+                    ])
                 ], style={
-                    'backgroundColor': color,
-                    'color': 'white',
-                    'padding': '20px',
-                    'borderRadius': '12px',
-                    'marginBottom': '10px',
-                    'boxShadow': '0 4px 12px rgba(0,0,0,0.15)',
-                    'animation': 'fadeIn 0.3s ease-out'
+                    'padding': '16px 24px',
+                    'backgroundColor': COLORS['card_bg'],
+                    'borderLeft': f'4px solid {color}',
+                    'marginBottom': '12px',
+                    'borderRadius': '8px',
+                    'boxShadow': '0 1px 3px rgba(0,0,0,0.1)'
                 })
             )
+        
         alerts_display = html.Div([
-            html.H4("Active Alerts", style={'color': COLORS['dark'], 'marginBottom': '15px', 'fontSize': '18px', 'fontWeight': '600'}),
-            html.Div(alert_cards)
-        ], style={
-            'backgroundColor': 'white',
-            'padding': '20px',
-            'borderRadius': '12px',
-            'boxShadow': '0 4px 6px rgba(0,0,0,0.07)'
-        })
+            html.H3('⚠️ Active Alerts', style={
+                'fontSize': '18px',
+                'fontWeight': '600',
+                'color': COLORS['dark'],
+                'marginBottom': '16px'
+            }),
+            html.Div(alert_items)
+        ])
     else:
-        alerts_display = html.Div([
-            html.Div([
-                html.Span('✓', style={'fontSize': '32px', 'color': COLORS['success'], 'marginRight': '15px'}),
-                html.Div([
-                    html.Strong("All Systems Normal", style={'display': 'block', 'fontSize': '16px', 'color': COLORS['dark']}),
-                    html.Span("No active alerts detected", style={'fontSize': '14px', 'color': '#6B7280'})
-                ])
-            ], style={'display': 'flex', 'alignItems': 'center'})
-        ], style={
-            'backgroundColor': 'white',
-            'padding': '20px',
-            'borderRadius': '12px',
-            'boxShadow': '0 4px 6px rgba(0,0,0,0.07)',
-            'border': f'2px solid {COLORS["success"]}'
-        })
+        alerts_display = html.Div()
     
     # Update history
     import time
-    current_time = time.time()
-    metrics_history['timestamps'].append(current_time)
+    metrics_history['timestamps'].append(time.time())
     metrics_history['accuracy'].append(accuracy if accuracy else 0)
     metrics_history['precision'].append(precision if precision else 0)
     metrics_history['recall'].append(recall if recall else 0)
@@ -459,127 +497,120 @@ def update_dashboard(n):
         if len(metrics_history[history_key]) >= 2:
             prev = metrics_history[history_key][-2]
             curr = metrics_history[history_key][-1]
-            if prev and curr:
+            if prev and curr and prev != 0:
                 change = ((curr - prev) / prev) * 100
-                arrow = '↑' if change > 0 else '↓' if change < 0 else '→'
-                color = COLORS['success'] if change > 0 else COLORS['danger'] if change < 0 else '#6B7280'
-                return html.Span(f"{arrow} {abs(change):.2f}%", style={'color': color, 'fontWeight': '600'})
-        return html.Span("—", style={'color': '#6B7280'})
+                if abs(change) < 0.01:
+                    return html.Span('—', style={'color': COLORS['gray']})
+                arrow = '↑' if change > 0 else '↓'
+                color = COLORS['success'] if change > 0 else COLORS['danger']
+                return html.Span(f"{arrow} {abs(change):.1f}%", style={'color': color})
+        return html.Span('—', style={'color': COLORS['gray']})
     
-    # Format display values
-    acc_display = f"{accuracy:.4f}" if accuracy else "N/A"
-    prec_display = f"{precision:.4f}" if precision else "N/A"
-    rec_display = f"{recall:.4f}" if recall else "N/A"
-    f1_display = f"{f1:.4f}" if f1 else "N/A"
+    # Format values
+    acc_display = f"{accuracy:.4f}" if accuracy else "—"
+    prec_display = f"{precision:.4f}" if precision else "—"
+    rec_display = f"{recall:.4f}" if recall else "—"
+    f1_display = f"{f1:.4f}" if f1 else "—"
     
-    # Last update time
-    from datetime import datetime
-    last_update = f"Last updated: {datetime.now().strftime('%H:%M:%S')}"
-    
-    # Enhanced performance graph
+    # Performance graph
     performance_fig = go.Figure()
     
-    colors_map = {
-        'accuracy': COLORS['primary'],
-        'precision': COLORS['purple'],
-        'recall': COLORS['danger'],
-        'f1_score': COLORS['warning']
-    }
+    metrics_config = [
+        ('accuracy', 'Accuracy', COLORS['primary']),
+        ('precision', 'Precision', COLORS['purple']),
+        ('recall', 'Recall', COLORS['danger']),
+        ('f1_score', 'F1 Score', COLORS['warning'])
+    ]
     
-    for metric, color in colors_map.items():
+    for metric, name, color in metrics_config:
         performance_fig.add_trace(go.Scatter(
             y=list(metrics_history[metric]),
-            mode='lines+markers',
-            name=metric.replace('_', ' ').title(),
-            line=dict(color=color, width=3),
-            marker=dict(size=6),
-            hovertemplate='<b>%{fullData.name}</b><br>Value: %{y:.4f}<extra></extra>'
+            mode='lines',
+            name=name,
+            line=dict(color=color, width=2.5),
+            hovertemplate='%{y:.4f}<extra></extra>'
         ))
     
     performance_fig.update_layout(
-        yaxis_title="Score",
-        yaxis_range=[0, 1],
+        yaxis=dict(range=[0, 1], title='', showgrid=True, gridcolor='#F3F4F6'),
+        xaxis=dict(title='', showgrid=False),
         hovermode='x unified',
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(family='inherit', size=12),
-        margin=dict(l=50, r=20, t=10, b=50),
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font=dict(family='inherit', size=13, color=COLORS['gray']),
+        margin=dict(l=60, r=20, t=20, b=40),
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
+            yanchor="top",
+            y=-0.15,
+            xanchor="center",
+            x=0.5
         ),
-        xaxis=dict(showgrid=True, gridcolor='#E5E7EB'),
-        yaxis=dict(showgrid=True, gridcolor='#E5E7EB')
+        height=400
     )
     
-    # Enhanced predictions graph
+    # Predictions graph
     predictions_fig = go.Figure()
     predictions_fig.add_trace(go.Scatter(
         y=list(metrics_history['predictions']),
-        mode='lines+markers',
-        name='Total Predictions',
-        line=dict(color=COLORS['success'], width=3),
+        mode='lines',
+        name='Predictions',
+        line=dict(color=COLORS['success'], width=2.5),
         fill='tozeroy',
-        fillcolor=f'rgba(16, 185, 129, 0.1)'
+        fillcolor='rgba(16, 185, 129, 0.1)'
     ))
     predictions_fig.add_trace(go.Scatter(
         y=list(metrics_history['errors']),
-        mode='lines+markers',
+        mode='lines',
         name='Errors',
-        line=dict(color=COLORS['danger'], width=3),
-        fill='tozeroy',
-        fillcolor=f'rgba(239, 68, 68, 0.1)'
+        line=dict(color=COLORS['danger'], width=2.5)
     ))
     
     predictions_fig.update_layout(
-        yaxis_title="Count",
-        hovermode='x unified',
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(family='inherit', size=12),
-        margin=dict(l=50, r=20, t=10, b=50),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        xaxis=dict(showgrid=True, gridcolor='#E5E7EB'),
-        yaxis=dict(showgrid=True, gridcolor='#E5E7EB')
+        yaxis=dict(title='', showgrid=True, gridcolor='#F3F4F6'),
+        xaxis=dict(title='', showgrid=False),
+        hovermode='x',
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font=dict(family='inherit', size=12, color=COLORS['gray']),
+        margin=dict(l=50, r=20, t=10, b=40),
+        legend=dict(orientation="h", yanchor="top", y=-0.2, xanchor="center", x=0.5),
+        height=300
     )
     
-    # Enhanced resources graph
+    # Resources graph
     resources_fig = go.Figure()
     resources_fig.add_trace(go.Scatter(
         y=list(metrics_history['cpu']),
-        mode='lines+markers',
-        name='CPU Usage (%)',
-        line=dict(color='#F59E0B', width=3),
-        fill='tozeroy',
-        fillcolor='rgba(245, 158, 11, 0.1)'
+        mode='lines',
+        name='CPU %',
+        line=dict(color=COLORS['warning'], width=2.5)
     ))
     resources_fig.add_trace(go.Scatter(
         y=list(metrics_history['memory']),
-        mode='lines+markers',
+        mode='lines',
         name='Memory (MB)',
-        line=dict(color='#10B981', width=3),
+        line=dict(color=COLORS['success'], width=2.5),
         yaxis='y2'
     ))
     
     resources_fig.update_layout(
-        yaxis_title="CPU %",
-        yaxis2=dict(title="Memory MB", overlaying='y', side='right'),
-        hovermode='x unified',
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(family='inherit', size=12),
-        margin=dict(l=50, r=50, t=10, b=50),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        xaxis=dict(showgrid=True, gridcolor='#E5E7EB'),
-        yaxis=dict(showgrid=True, gridcolor='#E5E7EB')
+        yaxis=dict(title='CPU %', showgrid=True, gridcolor='#F3F4F6'),
+        yaxis2=dict(title='Memory MB', overlaying='y', side='right', showgrid=False),
+        xaxis=dict(title='', showgrid=False),
+        hovermode='x',
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font=dict(family='inherit', size=12, color=COLORS['gray']),
+        margin=dict(l=50, r=60, t=10, b=40),
+        legend=dict(orientation="h", yanchor="top", y=-0.2, xanchor="center", x=0.5),
+        height=300
     )
     
     return (acc_display, prec_display, rec_display, f1_display,
-            get_change('accuracy'), get_change('precision'), get_change('recall'), get_change('f1_score'),
-            status, alerts_display, last_update,
+            get_change('accuracy'), get_change('precision'), 
+            get_change('recall'), get_change('f1_score'),
+            dot_style, conn_text, alerts_display,
             performance_fig, predictions_fig, resources_fig)
 
 if __name__ == '__main__':
